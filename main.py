@@ -1,44 +1,29 @@
-from fastapi import FastAPI, UploadFile, File, Form, Request
+from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
-import pandas as pd
-import random
-import string
 from datetime import date
 import stripe
+import random
+import string
 
-# ---------------------------------------------------------
-# STRIPE TEST MODE
-# ---------------------------------------------------------
-stripe.api_key = "sk_test_51SqBuc3V8G72nVD2R4IEotDqXJS8eTbO1WTh87RpyBLrke8dKfsZE6U8w4w8e8xCxkrSaMoaR66PIxlFo4F4krFg00Ptudcln3"
-
-# ---------------------------------------------------------
-# FASTAPI APP
-# ---------------------------------------------------------
 app = FastAPI()
 app.add_middleware(SessionMiddleware, secret_key="supersecretkey")
 
-# Database in RAM
+stripe.api_key = "sk_test_51SqBuc3V8G72nVD2R4IEotDqXJS8eTbO1WTh87RpyBLrke8dKfsZE6U8w4w8e8xCxkrSaMoaR66PIxlFo4F4krFg00Ptudcln3"
+
 USERS = {}
-USAGE = {}
-DAILY_LIMIT = 10
 
-
-# ---------------------------------------------------------
-# LOGIN
-# ---------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
-async def root(request: Request):
+async def home(request: Request):
     if request.session.get("email"):
         return RedirectResponse("/app")
     return RedirectResponse("/login")
 
-
 @app.get("/login", response_class=HTMLResponse)
-async def login_page():
+async def login():
     return """
     <html><body style='font-family:Arial;padding:40px;'>
-    <h2>Accedi</h2>
+    <h2>Login</h2>
     <form action="/send-otp" method="post">
         <input type="email" name="email" placeholder="Email" required>
         <button type="submit">Invia codice</button>
@@ -46,12 +31,10 @@ async def login_page():
     </body></html>
     """
 
-
 @app.post("/send-otp", response_class=HTMLResponse)
 async def send_otp(email: str = Form(...)):
     otp = "".join(random.choices(string.digits, k=6))
     USERS[email] = {"otp": otp}
-
     return f"""
     <html><body style='font-family:Arial;padding:40px;'>
     <h3>Codice OTP (solo test): {otp}</h3>
@@ -63,7 +46,6 @@ async def send_otp(email: str = Form(...)):
     </body></html>
     """
 
-
 @app.post("/verify-otp")
 async def verify_otp(request: Request, email: str = Form(...), otp: str = Form(...)):
     if email in USERS and USERS[email]["otp"] == otp:
@@ -71,18 +53,13 @@ async def verify_otp(request: Request, email: str = Form(...), otp: str = Form(.
         return RedirectResponse("/app")
     return HTMLResponse("<h3>Codice errato</h3>")
 
-
 @app.get("/logout")
 async def logout(request: Request):
     request.session.clear()
     return RedirectResponse("/login")
 
-
-# ---------------------------------------------------------
-# STRIPE SUBSCRIPTION SYSTEM
-# ---------------------------------------------------------
 @app.get("/subscribe", response_class=HTMLResponse)
-async def subscribe_page():
+async def subscribe():
     return """
     <html><body style='font-family:Arial;padding:40px;'>
     <h2>Abbonamento annuale</h2>
@@ -92,7 +69,6 @@ async def subscribe_page():
     </form>
     </body></html>
     """
-
 
 @app.post("/create-checkout")
 async def create_checkout(request: Request):
@@ -115,7 +91,6 @@ async def create_checkout(request: Request):
 
     return RedirectResponse(session.url, status_code=303)
 
-
 @app.post("/stripe/webhook")
 async def stripe_webhook(request: Request):
     payload = await request.body()
@@ -131,24 +106,16 @@ async def stripe_webhook(request: Request):
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
         email = session["customer_email"]
-
         USERS[email] = USERS.get(email, {})
         USERS[email]["active_until"] = date.today().replace(year=date.today().year + 1)
 
     return "OK", 200
 
-
-# ---------------------------------------------------------
-# SUCCESS & CANCEL PAGES
-# ---------------------------------------------------------
 @app.get("/success", response_class=HTMLResponse)
-async def success_page(request: Request):
+async def success(request: Request):
     email = request.query_params.get("email")
-
-    # 🔥 RIPRISTINA LA SESSIONE DOPO IL PAGAMENTO
     if email:
         request.session["email"] = email
-
     return """
     <html><body style='font-family:Arial;padding:40px;'>
     <h2>Pagamento riuscito ✅</h2>
@@ -157,9 +124,8 @@ async def success_page(request: Request):
     </body></html>
     """
 
-
 @app.get("/cancel", response_class=HTMLResponse)
-async def cancel_page():
+async def cancel():
     return """
     <html><body style='font-family:Arial;padding:40px;'>
     <h2>Pagamento annullato ❌</h2>
@@ -168,12 +134,8 @@ async def cancel_page():
     </body></html>
     """
 
-
-# ---------------------------------------------------------
-# APP PAGE (ACCESS CONTROL)
-# ---------------------------------------------------------
 @app.get("/app", response_class=HTMLResponse)
-async def app_page(request: Request):
+async def app(request: Request):
     email = request.session.get("email")
     if not email:
         return RedirectResponse("/login")
