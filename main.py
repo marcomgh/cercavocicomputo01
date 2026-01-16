@@ -193,8 +193,8 @@ async def create_checkout(request: Request):
             "quantity": 1,
         }],
         mode="subscription",
-        success_url="https://TUO-SITO.onrender.com/success",
-        cancel_url="https://TUO-SITO.onrender.com/cancel",
+        success_url="https://cercavocicomputo01.onrender.com/success",
+        cancel_url="https://cercavocicomputo01.com/cancel",
     )
 
     return RedirectResponse(session.url, status_code=303)
@@ -429,3 +429,4 @@ async def search(request: Request, file: UploadFile = File(...), query: str = Fo
         <a href="/app">Torna indietro</a>
         </body></html>
         """
+
