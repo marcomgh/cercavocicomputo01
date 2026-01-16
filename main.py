@@ -226,21 +226,16 @@ async def stripe_webhook(request: Request):
 # ---------------------------------------------------------
 # SUCCESS & CANCEL PAGES
 # ---------------------------------------------------------
-@app.get("/success", response_class=HTMLResponse)
-async def success_page(request: Request):
-    email = request.query_params.get("email")
+@app.get("/success", response_class=HTMLResponse) 
+async def success_page(request: Request): 
+email = request.query_params.get("email") 
 
-    # 🔥 RIPRISTINA LA SESSIONE DOPO IL PAGAMENTO
-    if email:
-        request.session["email"] = email
-
-    return """
-    <html><body style='font-family: Arial; padding: 40px;'>
-    <h2>Pagamento riuscito ✅</h2>
-    <p>Il tuo abbonamento è ora attivo per 12 mesi.</p>
-    <a href="/app">Vai all'app</a>
-    </body></html>
-    """
+if email: request.session["email"] = email # 🔥 RIPRISTINA LA SESSIONE 
+return """ 
+<html><body style='font-family: Arial; padding: 40px;'> 
+<h2>Pagamento riuscito ✅</h2> <p>Il tuo abbonamento è ora attivo per 12 mesi.
+</p> <a href="/app">Vai all'app</a> 
+</body></html> """
 
 
 @app.get("/cancel", response_class=HTMLResponse)
@@ -436,3 +431,4 @@ async def search(request: Request, file: UploadFile = File(...), query: str = Fo
         <a href="/app">Torna indietro</a>
         </body></html>
         """
+
