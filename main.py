@@ -187,7 +187,7 @@ async def create_checkout(request: Request):
 
     session = stripe.checkout.Session.create(
         customer_email=email,
-        client_reference_id=email,  # 🔥 IMPORTANTE PER RIPRISTINARE LA SESSIONE
+        client_reference_id=email,  # necessario per sicurezza
         payment_method_types=["card"],
         line_items=[{
             "price": "price_1SqCgn3V8G72nVD2xpkQcXtL",
@@ -226,16 +226,21 @@ async def stripe_webhook(request: Request):
 # ---------------------------------------------------------
 # SUCCESS & CANCEL PAGES
 # ---------------------------------------------------------
-@app.get("/success", response_class=HTMLResponse) 
-async def success_page(request: Request): 
-email = request.query_params.get("email") 
+@app.get("/success", response_class=HTMLResponse)
+async def success_page(request: Request):
+    email = request.query_params.get("email")
 
-if email: request.session["email"] = email # 🔥 RIPRISTINA LA SESSIONE 
-return """ 
-<html><body style='font-family: Arial; padding: 40px;'> 
-<h2>Pagamento riuscito ✅</h2> <p>Il tuo abbonamento è ora attivo per 12 mesi.
-</p> <a href="/app">Vai all'app</a> 
-</body></html> """
+    # 🔥 RIPRISTINA LA SESSIONE DOPO IL PAGAMENTO
+    if email:
+        request.session["email"] = email
+
+    return """
+    <html><body style='font-family: Arial; padding: 40px;'>
+    <h2>Pagamento riuscito ✅</h2>
+    <p>Il tuo abbonamento è ora attivo per 12 mesi.</p>
+    <a href="/app">Vai all'app</a>
+    </body></html>
+    """
 
 
 @app.get("/cancel", response_class=HTMLResponse)
@@ -431,4 +436,3 @@ async def search(request: Request, file: UploadFile = File(...), query: str = Fo
         <a href="/app">Torna indietro</a>
         </body></html>
         """
-
