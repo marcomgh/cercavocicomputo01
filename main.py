@@ -404,3 +404,4 @@ async def search(request: Request, file: UploadFile = File(...), query: str = Fo
         <a href="/app">Torna indietro</a>
         </body></html>
         """
+
