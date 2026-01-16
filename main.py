@@ -189,7 +189,7 @@ async def create_checkout(request: Request):
         customer_email=email,
         payment_method_types=["card"],
         line_items=[{
-            "price": "price_1SqCgn3V8G72nVD2xpkQcXtL",  # <-- IL TUO PRICE ID
+            "price": "price_1SqCgn3V8G72nVD2xpkQcXtL",
             "quantity": 1,
         }],
         mode="subscription",
@@ -207,7 +207,7 @@ async def stripe_webhook(request: Request):
 
     try:
         event = stripe.Webhook.construct_event(
-            payload, sig, "whsec_7GLYJeFLiOxDRIagitYghTjX8n7FNReE"  # <-- IL TUO WEBHOOK SECRET
+            payload, sig, "whsec_7GLYJeFLiOxDRIagitYghTjX8n7FNReE"
         )
     except Exception:
         return "Invalid", 400
@@ -220,6 +220,31 @@ async def stripe_webhook(request: Request):
         USERS[email]["active_until"] = date.today().replace(year=date.today().year + 1)
 
     return "OK", 200
+
+
+# ---------------------------------------------------------
+# SUCCESS & CANCEL PAGES
+# ---------------------------------------------------------
+@app.get("/success", response_class=HTMLResponse)
+async def success_page():
+    return """
+    <html><body style='font-family: Arial; padding: 40px;'>
+    <h2>Pagamento riuscito ✅</h2>
+    <p>Il tuo abbonamento è ora attivo per 12 mesi.</p>
+    <a href="/app">Vai all'app</a>
+    </body></html>
+    """
+
+
+@app.get("/cancel", response_class=HTMLResponse)
+async def cancel_page():
+    return """
+    <html><body style='font-family: Arial; padding: 40px;'>
+    <h2>Pagamento annullato ❌</h2>
+    <p>Puoi riprovare quando vuoi.</p>
+    <a href="/subscribe">Torna all'abbonamento</a>
+    </body></html>
+    """
 
 
 # ---------------------------------------------------------
@@ -404,4 +429,3 @@ async def search(request: Request, file: UploadFile = File(...), query: str = Fo
         <a href="/app">Torna indietro</a>
         </body></html>
         """
-
