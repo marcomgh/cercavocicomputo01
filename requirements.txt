@@ -5,3 +5,5 @@ pandas
 openpyxl
 starlette
 numpy
+itsdangerous
+
