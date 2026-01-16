@@ -6,4 +6,5 @@ openpyxl
 starlette
 numpy
 itsdangerous
+stripe
 
