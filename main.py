@@ -187,14 +187,15 @@ async def create_checkout(request: Request):
 
     session = stripe.checkout.Session.create(
         customer_email=email,
+        client_reference_id=email,  # 🔥 IMPORTANTE PER RIPRISTINARE LA SESSIONE
         payment_method_types=["card"],
         line_items=[{
             "price": "price_1SqCgn3V8G72nVD2xpkQcXtL",
             "quantity": 1,
         }],
         mode="subscription",
-        success_url="https://cercavocicomputo01.onrender.com/success",
-        cancel_url="https://cercavocicomputo01.com/cancel",
+        success_url=f"https://cercavocicomputo01.onrender.com/success?email={email}",
+        cancel_url="https://cercavocicomputo01.onrender.com/cancel",
     )
 
     return RedirectResponse(session.url, status_code=303)
@@ -226,7 +227,13 @@ async def stripe_webhook(request: Request):
 # SUCCESS & CANCEL PAGES
 # ---------------------------------------------------------
 @app.get("/success", response_class=HTMLResponse)
-async def success_page():
+async def success_page(request: Request):
+    email = request.query_params.get("email")
+
+    # 🔥 RIPRISTINA LA SESSIONE DOPO IL PAGAMENTO
+    if email:
+        request.session["email"] = email
+
     return """
     <html><body style='font-family: Arial; padding: 40px;'>
     <h2>Pagamento riuscito ✅</h2>
@@ -429,4 +436,3 @@ async def search(request: Request, file: UploadFile = File(...), query: str = Fo
         <a href="/app">Torna indietro</a>
         </body></html>
         """
-
