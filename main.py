@@ -5,10 +5,17 @@ import pandas as pd
 import random
 import string
 from datetime import date
+import stripe
 
+# ---------------------------------------------------------
+# STRIPE TEST MODE
+# ---------------------------------------------------------
+stripe.api_key = "sk_test_51SqBuc3V8G72nVD2R4IEotDqXJS8eTbO1WTh87RpyBLrke8dKfsZE6U8w4w8e8xCxkrSaMoaR66PIxlFo4F4krFg00Ptudcln3"
+
+# ---------------------------------------------------------
+# FASTAPI APP
+# ---------------------------------------------------------
 app = FastAPI()
-
-# Sessioni
 app.add_middleware(SessionMiddleware, secret_key="supersecretkey")
 
 # Database in RAM
@@ -17,6 +24,9 @@ USAGE = {}
 DAILY_LIMIT = 10
 
 
+# ---------------------------------------------------------
+# LOGIN
+# ---------------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     if request.session.get("email"):
@@ -151,11 +161,79 @@ async def logout(request: Request):
     return RedirectResponse("/login")
 
 
+# ---------------------------------------------------------
+# STRIPE SUBSCRIPTION SYSTEM
+# ---------------------------------------------------------
+@app.get("/subscribe", response_class=HTMLResponse)
+async def subscribe_page():
+    return """
+    <html><body style='font-family: Arial; padding: 40px;'>
+    <h2>Abbonamento annuale</h2>
+    <p>3,99€/anno – accesso illimitato all'app</p>
+    <form action="/create-checkout" method="post">
+        <button type="submit" style="padding: 12px; background:#007bff; color:white; border:none; border-radius:8px;">
+            Paga con Stripe
+        </button>
+    </form>
+    </body></html>
+    """
+
+
+@app.post("/create-checkout")
+async def create_checkout(request: Request):
+    email = request.session.get("email")
+    if not email:
+        return RedirectResponse("/login")
+
+    session = stripe.checkout.Session.create(
+        customer_email=email,
+        payment_method_types=["card"],
+        line_items=[{
+            "price": "price_1SqCgn3V8G72nVD2xpkQcXtL",  # <-- IL TUO PRICE ID
+            "quantity": 1,
+        }],
+        mode="subscription",
+        success_url="https://TUO-SITO.onrender.com/success",
+        cancel_url="https://TUO-SITO.onrender.com/cancel",
+    )
+
+    return RedirectResponse(session.url, status_code=303)
+
+
+@app.post("/stripe/webhook")
+async def stripe_webhook(request: Request):
+    payload = await request.body()
+    sig = request.headers.get("stripe-signature")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig, "whsec_7GLYJeFLiOxDRIagitYghTjX8n7FNReE"  # <-- IL TUO WEBHOOK SECRET
+        )
+    except Exception:
+        return "Invalid", 400
+
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        email = session["customer_email"]
+
+        USERS[email] = USERS.get(email, {})
+        USERS[email]["active_until"] = date.today().replace(year=date.today().year + 1)
+
+    return "OK", 200
+
+
+# ---------------------------------------------------------
+# APP PAGE (ACCESS CONTROL)
+# ---------------------------------------------------------
 @app.get("/app", response_class=HTMLResponse)
 async def app_page(request: Request):
     email = request.session.get("email")
     if not email:
         return RedirectResponse("/login")
+
+    user = USERS.get(email, {})
+    if "active_until" not in user or user["active_until"] < date.today():
+        return RedirectResponse("/subscribe")
 
     usage = USAGE.get(email, {"date": date.today(), "count": 0})
     count = usage["count"]
@@ -225,6 +303,9 @@ async def app_page(request: Request):
     """
 
 
+# ---------------------------------------------------------
+# SEARCH ENGINE
+# ---------------------------------------------------------
 @app.post("/search", response_class=HTMLResponse)
 async def search(request: Request, file: UploadFile = File(...), query: str = Form(...)):
     email = request.session.get("email")
